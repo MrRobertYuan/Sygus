@@ -103,7 +103,7 @@ if __name__ == '__main__':
                 #raw_input()
             #print '1'
             check_start_time = time.time()
-            counterexample = checker.check(Str, counterexample)
+            counterexample = checker.check(Str)
             check_end_time = time.time()
             print(f"Check time: {check_end_time-check_start_time}. {counterexample}")
             #print counterexample

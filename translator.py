@@ -90,11 +90,9 @@ def ReadQuery(bmExpr):
             self.solver=Solver()
             self.spec_smt2_string = '\n'.join([f'(assert {toString(c[1:])})' for c in Constraints])
             MAGIC_NUMBER = [543, 1245, 3214, 121456, 12341, 87965, 3245]
-            counterexample = And([x == MAGIC_NUMBER[i] for i, x in enumerate(self.VarTable.values()) if x.sort() == IntSort() ])
-            self._ce = Bool('_ce')
-            self.solver.add(Implies(self._ce, counterexample ))
+            self.counterexample = And([x == MAGIC_NUMBER[i] for i, x in enumerate(self.VarTable.values()) if x.sort() == IntSort() ])
 
-        def check(self,funcDefStr, ce=None):
+        def check(self,funcDefStr):
             self.solver.push()
             smt2_string = f'{funcDefStr}\n{self.spec_smt2_string}'
             spec = parse_smt2_string(smt2_string, decls=dict(self.VarTable))
@@ -106,7 +104,7 @@ def ReadQuery(bmExpr):
 
             print(f"Check: {funcDefStr}")
 
-            res=self.solver.check(self._ce)
+            res=self.solver.check(self.counterexample)
             print("After ce check.")
             if res == sat:
                 model=self.solver.model()
