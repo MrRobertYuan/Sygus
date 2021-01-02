@@ -16,11 +16,18 @@ def Extend(Stmts, Productions):
                     ret.append(Stmts[0:i]+[extended]+Stmts[i+1:])
         elif Stmts[i] in Productions:
             for extended in Productions[Stmts[i]]:
-                if extended[0] == '<' or extended[0] == '<=':
+                if type(extended) is list:
+                    if extended[0] == '<' or extended[0] == '<=':
+                        continue
+                    if not_context and (extended[0] == 'not' or extended[0] in symmetrical):
+                        continue
+                elif Stmts[0] in relational and i == 2 and extended == Stmts[1]:
                     continue
-                if not_context and (extended[0] == 'not' or extended[0] in symmetrical):
+                elif Stmts[0] == 'ite' and i == 3 and extended == Stmts[2]:
                     continue
                 ret.append(Stmts[0:i]+[extended]+Stmts[i+1:])
+        if len(ret) > 0:
+            break
     return ret
 
 def stripComments(bmFile):
@@ -55,7 +62,7 @@ def add_identical(TE):
         te_str = str(te)
         TE_set.add(te_str)
 
-def get_identical(TE, context=0, *, ite_cond=False, not_context=False):
+def get_identical(TE, context=0):
     TE_str = str(TE)
     ret = []
     if context >= 2:
@@ -67,8 +74,7 @@ def get_identical(TE, context=0, *, ite_cond=False, not_context=False):
         if len(TE) == 1:    # Variable or constant
             ret.append(get_identical(TE[0], context+1))
         elif len(TE) == 2:  # Not
-            not_context = TE[0] == 'not'
-            te1 = get_identical(TE[1], context+1, not_context=not_context)
+            te1 = get_identical(TE[1], context+1)
             for x in te1:
                 ret.append([TE[0], x])
         elif len(TE) == 3:

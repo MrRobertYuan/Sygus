@@ -109,7 +109,7 @@ def ReadQuery(bmExpr):
             if verbose:
                 print("spec:", spec)
 
-            print(f"Check: {funcDefStr}")
+            # print(f"Check: {funcDefStr}")
 
             res=self.solver.check(self.counterexample)
             # print("After ce check.")
