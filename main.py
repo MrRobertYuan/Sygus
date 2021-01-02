@@ -3,6 +3,7 @@ import sexp
 import pprint
 import translator
 import time
+from queue import PriorityQueue
 
 def Extend(Stmts, Productions):
     ret = []
@@ -41,6 +42,40 @@ def getReverse(TE):
     #print("After:", str(TE))
     return TE
 
+def calcuAll(l):
+    ans = 0
+    for i in range(len(l)):
+        if type(l[i]) == list:
+            ans += calcuAll(l[i])
+        else:
+            ans += 1
+    return ans
+
+def calcuStart(l):
+    ans = 0
+    for i in range(len(l)):
+        if type(l[i]) == list:
+            ans += calcuAll(l[i])
+        elif l[i] == 'Start':
+            ans += 1
+    return ans
+
+class myList:
+    allCnt: 0
+    startCnt: 0
+    list: []
+
+    def __init__(self, l):
+        self.list = l
+        self.startCnt = calcuStart(l)
+        self.allCnt = calcuAll(l)
+
+    def __lt__(self, other):
+        if self.allCnt != other.allCnt:
+            return self.allCnt < other.allCnt
+        else:
+            return self.startCnt < other.startCnt
+
 if __name__ == '__main__':
     benchmarkFile = open(sys.argv[1])
     bm = stripComments(benchmarkFile)
@@ -58,8 +93,9 @@ if __name__ == '__main__':
             SynFunExpr=expr
     FuncDefine = ['define-fun']+SynFunExpr[1:4] #copy function signature
 
-
-
+    priorityQueue = PriorityQueue()
+    myTE = myList([StartSym])
+    priorityQueue.put(myTE)
     #print(FuncDefine)
     BfsQueue = [[StartSym]] #Top-down
     Productions = {StartSym:[]}
@@ -82,11 +118,13 @@ if __name__ == '__main__':
     TE_set = set()
 
     time_start = time.time()
-    while(len(BfsQueue)!=0):
+    while(priorityQueue.empty() == False):
         # print(f"TE_set size: {len(TE_set)}")
         # print(f"Queue size: {len(BfsQueue)}")
-        Curr = BfsQueue.pop(0)
-        #print("Extending "+str(Curr))
+        # Curr = BfsQueue.pop(0)
+        Curr = priorityQueue.get().list
+        print(type(Curr))
+        print("Extending "+str(Curr))
         TryExtend = Extend(Curr, Productions)
         if(len(TryExtend) == 0): # Nothing to extend
             FuncDefineStr = translator.toString(FuncDefine,ForceBracket = True) # use Force Bracket = True on function definition. MAGIC CODE. DO NOT MODIFY THE ARGUMENT ForceBracket = True.
@@ -117,7 +155,9 @@ if __name__ == '__main__':
         for TE in TryExtend:
             TE_str = str(TE)
             if not TE_str in TE_set:
-                BfsQueue.append(TE)
+                # BfsQueue.append(TE)
+                myTE = myList(TE)
+                priorityQueue.put(myTE)
                 TE_set.add(TE_str)
                 t = str([getReverse(TE[0])])
                 TE_set.add(t)
