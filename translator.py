@@ -88,22 +88,33 @@ def ReadQuery(bmExpr):
             self.synFunction=synFunction
             self.Constraints=Constraints
             self.solver=Solver()
+            self.spec_smt2_string = '\n'.join([f'(assert {toString(c[1:])})' for c in Constraints])
+            MAGIC_NUMBER = [543, 1245, 3214, 121456, 12341, 87965, 3245]
+            counterexample = And([x == MAGIC_NUMBER[i] for i, x in enumerate(self.VarTable.values()) if x.sort() == IntSort() ])
+            self._ce = Bool('_ce')
+            self.solver.add(Implies(self._ce, counterexample ))
 
-        def check(self,funcDefStr):
-            #print(funcDefStr)
+        def check(self,funcDefStr, ce=None):
             self.solver.push()
-            spec_smt2=[funcDefStr]
-            for constraint in Constraints:
-                spec_smt2.append('(assert %s)'%(toString(constraint[1:])))
-            spec_smt2='\n'.join(spec_smt2)
-            #print spec_smt2
-            spec = parse_smt2_string(spec_smt2, decls=dict(self.VarTable))
+            smt2_string = f'{funcDefStr}\n{self.spec_smt2_string}'
+            spec = parse_smt2_string(smt2_string, decls=dict(self.VarTable))
             spec = And(spec)
-            self.solver.add(Not(spec))
+            spec = Not(spec)
+            self.solver.add(spec)
             if verbose:
-                print("spec:",spec)
+                print("spec:", spec)
+
+            print(f"Check: {funcDefStr}")
+
+            res=self.solver.check(self._ce)
+            print("After ce check.")
+            if res == sat:
+                model=self.solver.model()
+                self.solver.pop()
+                return model
 
             res=self.solver.check()
+            print("After check.")
             if res==unsat:
                 self.solver.pop()
                 return None

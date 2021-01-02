@@ -24,10 +24,11 @@ def stripComments(bmFile):
         noComments += line
     return noComments + ')'
 
+commutative = set(['*', '+', 'and', 'or', '='])
 
 def getReverse(TE):
     #print("Before:", str(TE))
-    if(TE[0] == '*' or TE[0] == '+'):
+    if(TE[0] in commutative and TE[1] != TE[2]):
         t = TE[1]
         TE[1] = TE[2]
         TE[2] = t
@@ -79,8 +80,11 @@ if __name__ == '__main__':
                 Productions[NTName].append(NT)
     Count = 0
     TE_set = set()
+
     time_start = time.time()
     while(len(BfsQueue)!=0):
+        # print(f"TE_set size: {len(TE_set)}")
+        # print(f"Queue size: {len(BfsQueue)}")
         Curr = BfsQueue.pop(0)
         #print("Extending "+str(Curr))
         TryExtend = Extend(Curr, Productions)
@@ -98,7 +102,10 @@ if __name__ == '__main__':
                 # print (Str)
                 #raw_input()
             #print '1'
-            counterexample = checker.check(Str)
+            check_start_time = time.time()
+            counterexample = checker.check(Str, counterexample)
+            check_end_time = time.time()
+            print(f"Check time: {check_end_time-check_start_time}. {counterexample}")
             #print counterexample
             if(counterexample == None): # No counter-example
                 Ans = Str
@@ -112,7 +119,11 @@ if __name__ == '__main__':
             if not TE_str in TE_set:
                 BfsQueue.append(TE)
                 TE_set.add(TE_str)
-                TE_set.add(str([getReverse(TE[0])]))
+                t = str([getReverse(TE[0])])
+                TE_set.add(t)
+                # TE_set.add(str([getReverse(TE[0])]))
+                # print(TE_str)
+                # print(t)
     time_end = time.time()
     print(Ans)
     print(time_end-time_start)
