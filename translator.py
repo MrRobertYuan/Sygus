@@ -82,6 +82,13 @@ def ReadQuery(bmExpr):
             self.targetFunction=Function('__TARGET_FUNCTION__', *(self.Sorts))
     synFunction=SynFunction(SynFunExpr)
 
+    def magic(i):
+        MAGIC_NUMBER = [543, 1245, 3214, 121456, 12341, 87965, 3245, 728]
+        if i >= len(MAGIC_NUMBER):
+            return 777
+        else:
+            return MAGIC_NUMBER[i]
+    
     class Checker:
         def __init__(self, VarTable,  synFunction, Constraints):
             self.VarTable=VarTable
@@ -89,8 +96,8 @@ def ReadQuery(bmExpr):
             self.Constraints=Constraints
             self.solver=Solver()
             self.spec_smt2_string = '\n'.join([f'(assert {toString(c[1:])})' for c in Constraints])
-            MAGIC_NUMBER = [543, 1245, 3214, 121456, 12341, 87965, 3245]
-            self.counterexample = And([x == MAGIC_NUMBER[i] for i, x in enumerate(self.VarTable.values()) if x.sort() == IntSort() ])
+            
+            self.counterexample = And([x == magic(i) for i, x in enumerate(self.VarTable.values()) if x.sort() == IntSort() ])
 
         def check(self,funcDefStr):
             self.solver.push()
@@ -105,14 +112,14 @@ def ReadQuery(bmExpr):
             print(f"Check: {funcDefStr}")
 
             res=self.solver.check(self.counterexample)
-            print("After ce check.")
+            # print("After ce check.")
             if res == sat:
                 model=self.solver.model()
                 self.solver.pop()
                 return model
 
             res=self.solver.check()
-            print("After check.")
+            # print("After check.")
             if res==unsat:
                 self.solver.pop()
                 return None

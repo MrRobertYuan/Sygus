@@ -7,6 +7,7 @@ from queue import PriorityQueue
 
 def Extend(Stmts, Productions):
     ret = []
+    not_context = Stmts[0] == 'not'
     for i in range(len(Stmts)):
         if type(Stmts[i]) == list:
             TryExtend = Extend(Stmts[i], Productions)
@@ -15,6 +16,10 @@ def Extend(Stmts, Productions):
                     ret.append(Stmts[0:i]+[extended]+Stmts[i+1:])
         elif Stmts[i] in Productions:
             for extended in Productions[Stmts[i]]:
+                if extended[0] == '<' or extended[0] == '<=':
+                    continue
+                if not_context and (extended[0] == 'not' or extended[0] in symmetrical):
+                    continue
                 ret.append(Stmts[0:i]+[extended]+Stmts[i+1:])
     return ret
 
@@ -25,7 +30,73 @@ def stripComments(bmFile):
         noComments += line
     return noComments + ')'
 
+TE_set = set()
+TE_dict = dict()
+Productions = dict()
 commutative = set(['*', '+', 'and', 'or', '='])
+
+symmetrical = {
+    '<': '>',
+    '>': '<',
+    '>=': '<=',
+    '<=': '>='
+}
+
+relational = set(['=', '<', '>', '<=', '>='])
+logical = set(['not', 'and', 'or'])
+
+def add_identical(TE):
+    identicals = get_identical(TE)
+    # print("Identical")
+    # pprint.pprint(TE)
+    # pprint.pprint(identicals)
+    # pprint.pprint(TE_dict)
+    for te in identicals:
+        te_str = str(te)
+        TE_set.add(te_str)
+
+def get_identical(TE, context=0, *, ite_cond=False, not_context=False):
+    TE_str = str(TE)
+    ret = []
+    if context >= 2:
+        return [TE]
+    if(TE_str in TE_dict):
+        return TE_dict[TE_str]
+
+    if type(TE) is list:
+        if len(TE) == 1:    # Variable or constant
+            ret.append(get_identical(TE[0], context+1))
+        elif len(TE) == 2:  # Not
+            not_context = TE[0] == 'not'
+            te1 = get_identical(TE[1], context+1, not_context=not_context)
+            for x in te1:
+                ret.append([TE[0], x])
+        elif len(TE) == 3:
+            te1 = get_identical(TE[1], context+1)
+            te2 = get_identical(TE[2], context+1)
+            for x in te1:
+                for y in te2:
+                    ret.append([TE[0], x, y])
+                    if TE[0] in commutative:
+                        if str(x) != str(y) and (str(x) in Productions or str(y) in Productions):
+                            ret.append([TE[0], y, x])
+                    if TE[0] in symmetrical:
+                        ret.append([symmetrical[TE[0]], y, x])
+        elif len(TE) == 4:  # ite
+            te1 = get_identical(TE[1])
+            te2 = get_identical(TE[2])
+            te3 = get_identical(TE[3])
+            for x in te1:
+                for y in te2:
+                    for z in te3:
+                        ret.append([TE[0], x, y, z])
+
+        else:
+            ret = [TE]
+    else:
+        ret = [TE]
+    TE_dict[TE_str] = ret
+    return ret
 
 def getReverse(TE):
     #print("Before:", str(TE))
@@ -56,7 +127,7 @@ def calcuStart(l):
     for i in range(len(l)):
         if type(l[i]) == list:
             ans += calcuAll(l[i])
-        elif l[i] == 'Start':
+        elif l[i] in Productions:
             ans += 1
     return ans
 
@@ -115,7 +186,6 @@ if __name__ == '__main__':
             else:
                 Productions[NTName].append(NT)
     Count = 0
-    TE_set = set()
 
     time_start = time.time()
     while(priorityQueue.empty() == False):
@@ -123,8 +193,7 @@ if __name__ == '__main__':
         # print(f"Queue size: {len(BfsQueue)}")
         # Curr = BfsQueue.pop(0)
         Curr = priorityQueue.get().list
-        print(type(Curr))
-        print("Extending "+str(Curr))
+        # print("Extending "+str(Curr))
         TryExtend = Extend(Curr, Productions)
         if(len(TryExtend) == 0): # Nothing to extend
             FuncDefineStr = translator.toString(FuncDefine,ForceBracket = True) # use Force Bracket = True on function definition. MAGIC CODE. DO NOT MODIFY THE ARGUMENT ForceBracket = True.
@@ -140,11 +209,7 @@ if __name__ == '__main__':
                 # print (Str)
                 #raw_input()
             #print '1'
-            check_start_time = time.time()
             counterexample = checker.check(Str)
-            check_end_time = time.time()
-            print(f"Check time: {check_end_time-check_start_time}. {counterexample}")
-            #print counterexample
             if(counterexample == None): # No counter-example
                 Ans = Str
                 break
@@ -158,12 +223,10 @@ if __name__ == '__main__':
                 # BfsQueue.append(TE)
                 myTE = myList(TE)
                 priorityQueue.put(myTE)
-                TE_set.add(TE_str)
-                t = str([getReverse(TE[0])])
-                TE_set.add(t)
+                add_identical(TE)
+                # TE_set.add(TE_str)
                 # TE_set.add(str([getReverse(TE[0])]))
-                # print(TE_str)
-                # print(t)
+
     time_end = time.time()
     print(Ans)
     print(time_end-time_start)
